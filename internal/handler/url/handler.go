@@ -1,19 +1,22 @@
 package url
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 type (
 	URL struct {
-		ID        uuid.UUID `json:"id,omitempty"`
+		Hash      string    `json:"hash,omitempty"`
 		CreatedAt time.Time `json:"created_at,omitempty"`
 		UpdatedAt time.Time `json:"updated_at,omitempty"`
 
@@ -24,6 +27,7 @@ type (
 		OriginalURL string    `json:"original_url,omitempty"`
 		Alias       string    `json:"alias,omitempty"`
 		ExpiredAt   time.Time `json:"expired_at,omitempty"`
+		UserID      string    `json:"user_id,omitempty"`
 
 		// UTM Parameters (optional)
 		// https://en.wikipedia.org/wiki/UTM_parameters
@@ -32,7 +36,13 @@ type (
 		Campaign string `json:"campaign,omitempty"`
 	}
 	CreateURLRequest BaseURL
-	Persister        interface {
+	KeyGenerator     interface {
+		NextID() (uint64, error)
+	}
+	KeyGeneratorProvider interface {
+		KeyGenerator() KeyGenerator
+	}
+	Persister interface {
 		CreateURL(u *URL) error
 	}
 	PersistenceProvider interface {
@@ -41,6 +51,7 @@ type (
 	handlerDependencies interface {
 		URLRoutes() gin.IRoutes
 		PersistenceProvider
+		KeyGeneratorProvider
 	}
 	HandlerProvider interface {
 		URLHandler() *Handler
@@ -98,9 +109,27 @@ func (h *Handler) createURL(c *gin.Context) {
 		return
 	}
 
+	key, err := h.hd.KeyGenerator().NextID()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error_code": "internal_error",
+			"message":    "generate key failed",
+		})
+
+		return
+	}
+
+	hash := md5.New()
+	hash.Write([]byte(strconv.FormatUint(key, 10)))
+	hashEncoded := hex.EncodeToString(hash.Sum(nil))
+
 	now := time.Now()
+	if request.ExpiredAt.IsZero() {
+		request.ExpiredAt = request.ExpiredAt.Add(7 * 24 * time.Hour)
+	}
+
 	err = h.hd.URLPersister().CreateURL(&URL{
-		ID:        uuid.New(),
+		Hash:      hashEncoded,
 		CreatedAt: now,
 		UpdatedAt: now,
 
@@ -112,10 +141,11 @@ func (h *Handler) createURL(c *gin.Context) {
 			"message":    "create original url failed",
 		})
 
+		log.Println(err)
 		return
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
-		"short_url": "TVDah8nCj",
+		"short_url": hashEncoded,
 	})
 }
