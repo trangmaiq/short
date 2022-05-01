@@ -1,0 +1,16 @@
+version: '3.7'
+
+services:
+  mysqld:
+    image: mysql:5.7
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=secret
+
+  cassandrad:
+    image:
+volumes:
+  mysql-data:

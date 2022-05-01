@@ -1,0 +1,13 @@
+version: '3.9'
+
+services:
+  cassandrad:
+    container_name: "cassandrad"
+    image: cassandra:4.0
+    ports:
+      - "9042:9042"
+    volumes:
+      - ./cassandra-data:/var/lib/cassandra
+    environment:
+      - CASSANDRA_CLUSTER_NAME=short
+      - CASSANDRA_PASSWORD=secret
