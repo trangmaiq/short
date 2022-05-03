@@ -16,6 +16,7 @@ import (
 
 type (
 	URL struct {
+		ID        string    `json:"id,omitempty"`
 		Hash      string    `json:"hash,omitempty"`
 		CreatedAt time.Time `json:"created_at,omitempty"`
 		UpdatedAt time.Time `json:"updated_at,omitempty"`
@@ -128,8 +129,10 @@ func (h *Handler) createURL(c *gin.Context) {
 		request.ExpiredAt = request.ExpiredAt.Add(7 * 24 * time.Hour)
 	}
 
+	short := hashEncoded[:8]
 	err = h.hd.URLPersister().CreateURL(&URL{
-		Hash:      hashEncoded,
+		ID:        hashEncoded,
+		Hash:      short,
 		CreatedAt: now,
 		UpdatedAt: now,
 
@@ -146,6 +149,6 @@ func (h *Handler) createURL(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
-		"short_url": hashEncoded,
+		"short_url": short,
 	})
 }
