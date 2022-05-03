@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="SqlDialectMappings">
+    <file url="file://$PROJECT_DIR$/migrations/cassandra/20220503030527_create-keyspace.up.cql" dialect="CassandraQL" />
+    <file url="file://$PROJECT_DIR$/migrations/cassandra/20220503030848_create-table-urls.up.cql" dialect="CassandraQL" />
+  </component>
+</project>

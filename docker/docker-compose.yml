@@ -8,6 +8,9 @@ services:
       - "9042:9042"
     volumes:
       - ./cassandra-data:/var/lib/cassandra
+      - type: bind
+        source: ${PWD}/docker/cassandra-data/cassandra.yaml
+        target: /etc/cassandra/cassandra.yaml
     environment:
       - CASSANDRA_CLUSTER_NAME=short
       - CASSANDRA_PASSWORD=secret
