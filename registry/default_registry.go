@@ -2,22 +2,21 @@ package registry
 
 import (
 	"context"
-	"time"
-
 	"github.com/gin-gonic/gin"
-	"github.com/sony/sonyflake"
 	"github.com/trangmaiq/short/internal/handler/url"
 	"github.com/trangmaiq/short/internal/persistence/cassandra"
+	"github.com/trangmaiq/short/internal/services/kgs"
 )
 
 var _ Registry = new(DefaultRegistry)
 
 type DefaultRegistry struct {
-	engine    *gin.Engine
-	persister *cassandra.Persister
-	sonyflake *sonyflake.Sonyflake
-
+	engine         *gin.Engine
 	urlRouterGroup *gin.RouterGroup
+
+	persister *cassandra.Persister
+
+	kgsClient url.KeyGenerator
 }
 
 func New(engine *gin.Engine) (Registry, error) {
@@ -29,9 +28,11 @@ func New(engine *gin.Engine) (Registry, error) {
 	return r, err
 }
 
-func (r *DefaultRegistry) Init(ctx context.Context, engine *gin.Engine) error {
+func (r *DefaultRegistry) Init(_ context.Context, engine *gin.Engine) error {
 	r.engine = engine
 	r.urlRouterGroup = engine.Group("/urls")
+
+	r.URLHandler().RegisterRoutes()
 
 	persister, err := cassandra.NewPersister()
 	if err != nil {
@@ -39,9 +40,7 @@ func (r *DefaultRegistry) Init(ctx context.Context, engine *gin.Engine) error {
 	}
 	r.persister = persister
 
-	r.sonyflake = sonyflake.NewSonyflake(sonyflake.Settings{StartTime: time.Now()})
-
-	r.URLHandler().RegisterRoutes()
+	r.kgsClient = kgs.NewClient()
 
 	return nil
 }
@@ -59,5 +58,5 @@ func (r *DefaultRegistry) URLPersister() url.Persister {
 }
 
 func (r *DefaultRegistry) KeyGenerator() url.KeyGenerator {
-	return r.sonyflake
+	return r.kgsClient
 }

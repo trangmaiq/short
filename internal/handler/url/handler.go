@@ -1,14 +1,12 @@
 package url
 
 import (
-	"crypto/md5"
-	"encoding/hex"
+	"context"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"net/url"
-	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -16,7 +14,6 @@ import (
 
 type (
 	URL struct {
-		ID        string    `json:"id,omitempty"`
 		Hash      string    `json:"hash,omitempty"`
 		CreatedAt time.Time `json:"created_at,omitempty"`
 		UpdatedAt time.Time `json:"updated_at,omitempty"`
@@ -38,7 +35,7 @@ type (
 	}
 	CreateURLRequest BaseURL
 	KeyGenerator     interface {
-		NextID() (uint64, error)
+		UseKey(ctx context.Context) (string, error)
 	}
 	KeyGeneratorProvider interface {
 		KeyGenerator() KeyGenerator
@@ -110,29 +107,24 @@ func (h *Handler) createURL(c *gin.Context) {
 		return
 	}
 
-	key, err := h.hd.KeyGenerator().NextID()
+	key, err := h.hd.KeyGenerator().UseKey(c)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error_code": "internal_error",
 			"message":    "generate key failed",
+			"root_cause": err.Error(),
 		})
 
 		return
 	}
-
-	hash := md5.New()
-	hash.Write([]byte(strconv.FormatUint(key, 10)))
-	hashEncoded := hex.EncodeToString(hash.Sum(nil))
 
 	now := time.Now()
 	if request.ExpiredAt.IsZero() {
 		request.ExpiredAt = request.ExpiredAt.Add(7 * 24 * time.Hour)
 	}
 
-	short := hashEncoded[:8]
 	err = h.hd.URLPersister().CreateURL(&URL{
-		ID:        hashEncoded,
-		Hash:      short,
+		Hash:      key,
 		CreatedAt: now,
 		UpdatedAt: now,
 
@@ -149,6 +141,6 @@ func (h *Handler) createURL(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
-		"short_url": short,
+		"short_url": key,
 	})
 }
